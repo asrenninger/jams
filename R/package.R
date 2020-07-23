@@ -1,0 +1,23 @@
+########################################
+## Packages
+########################################
+
+## Wrangling
+
+library(tidyverse)
+library(janitor)
+library(vroom)
+library(data.table)
+library(dtplyr)
+
+## Spatial
+
+library(sf)
+library(sfnetworks)
+library(tmap)
+library(tmaptools)
+library(tigris)
+
+## Data
+
+library(osmdata)
