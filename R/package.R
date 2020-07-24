@@ -21,3 +21,8 @@ library(tigris)
 ## Data
 
 library(osmdata)
+
+##
+
+library(RANN)
+library(FNN)
