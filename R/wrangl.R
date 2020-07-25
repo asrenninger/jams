@@ -24,7 +24,7 @@ roads <-
 bounds <-
   getbb("Louisville, KY") %>%
   opq() %>%
-  add_osm_feature(key = "name" value = "Jefferson County") %>%
+  add_osm_feature(key = "name", value = "Jefferson County") %>%
   osmdata_sf() %>%
   magrittr::use_series("osm_polygons")
   
