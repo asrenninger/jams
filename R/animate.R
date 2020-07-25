@@ -101,7 +101,8 @@ library(scales)
 ## With both of these elements, we can animate
 animate <-
   base +
-  geom_point(data = test, 
+  geom_point(data = test, #%>%
+               #filter(rounded < as_date('2018-06-8 00:00:00')), 
              #aes(longitude, latitude, size = delay, color = discreter(delay, 9)), alpha = 0.5, 
              aes(longitude, latitude, size = delay, color = delay / 60), alpha = 0.5, 
              show.legend = TRUE) +
@@ -124,6 +125,10 @@ animate <-
 
 ## Then save it
 anim_save("jams.gif", animation = animate, 
-          height = 780, width = 805, nframes = 200, fps = 5,
+          height = 780, width = 810, nframes = 200, fps = 5,
+          start_pause = 2, end_pause = 2)
+
+anim_save("jams_trimmed.gif", animation = animate, 
+          height = 600, width = 620, nframes = 100, fps = 5,
           start_pause = 2, end_pause = 2)
 
