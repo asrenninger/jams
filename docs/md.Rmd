@@ -1,0 +1,438 @@
+---
+title: "TOWARDS A NETWORK OF STREETS"
+author: "andrew renninger"
+date: "9 May 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, 
+                      message = FALSE, cache = TRUE)
+
+```
+
+# Foundations 
+
+With a dataset of 5 million unique incidents of traffic slowing or stopping from the city of Louisville, We want to determine whether or not the structure of the street network corresponds to troubles during the typical morning commute. Mapping every kink in vehicle flows during the month of June, we can see that certain hot spots do concentrate around major roads—unsurprisingly. Yet this does not tell us about the structure underpinning this phenomenon. Before producing a predictive model, in the interest of extracting valuable features from the urban fabric, we want to measure the relationships between streets and test how these measures associate with traffic congestion.   
+
+![](https://github.com/asrenninger/jams/raw/master/viz/jams.gif)
+
+Getting from point A to point B in a city does not required hundreds of turns; drivers can simplify things by hopping on an expressway then finishing the journey on back roads. The issue is an of **topology**. Topology, the study of spatial relations, is itself the study of how things are interact, disregarding much of what happens in between interactions. Time on the expressway is less important than the number of turns. Topology allows us to understand the fragility of urban networks (what would happen if this road was closure?), the benefits of street arrangements (is a grid or a mess of streets better?), and countless other questions about cities and their function. Topology is key to understanding the twin issues of **efficiency** and **robustness**, and thus how to trade off costs of redundancy with risks of failure. One entry point into this study is with **space syntax**, a technique for measuring the integration of streets in a network. Space syntax is attractive because it is parsimonious, according to Batty (2017), but the model is only valuable if it predicts. With this is mind, this project uses methods borrowed from space syntax and network science to both reduce street networks to their topological roots and then to study them. It is a both *tool* and *workflow* as well as *analysis*, serving as proof positive for future applications.  
+
+The following adopts graph theory in order to better understand urban networks. This study begins by transforming data grounded in geography, or positional data, into relational data, with information regarding not just *where* a thing is but also *how* it relates to other things---in this case, a street and other streets. After recasting streets as **nodes** in a network, and their intersections as **links** between them, it then takes on the challenge understanding how important each street is to the functioning of the network as a whole. A naive approach may extract nodes---using ArcGIS or QGIS---at intersections, but this would be akin to taking connections in social network as nodes and the friends themselves as links. Streets interact at their intersections, but, at least to this urbanist, they are the focus---the locus of activity and the scaffold for urban life. We move through and to streets, not intersections. We know of Madison Avenue, Lombard Street, and Rodeo Drive. (An edge is a line on a graph and a node is a point; Appended code attempts to interpret the urban network in this way, with streets not as edges but as nodes. Intersections are their connections---the edges.)
+
+How critical or **central** is a stretch of pavement to the functioning of the city? Centrality can consist of **betweenness**, **closeness**, and **degree**. If we list every pair of vertices in a network along with the shortest path between them, collating the number of times any given node is used along those paths will give you its betweenness. Considering simply the distance of one vertex to all others will give you closeness. For a vertex, counting the number of edges attached will give you its degree. For a street, this is just how many other streets touch it. By way of example, the following shows the various measures for the city of Louisville. We can see that betweenness values cut across the city while closeness values those nearest the core. In spatially constrained networks, then, the center in terms of closeness is also likely to be the center, *close* to the action. The center in terms of betweenness is likely to involve geographic constraints: in a city bisected by a river, the only bridge is *between* all the nodes on one side and all the nodes on the other. Data sources may be found in citations.  
+
+# Process
+
+To apply rigorous statistical logic to the process, we explore the role we convert a morphological representation of streets to a topological one using data from the Census at the `tigris` package. The city provides an interesting mix of orders and arrangements, with a grid constituting the urban core of the city but pure desire lines, coming in from Suburban enclaves, cut into it.  
+
+```{r show, eval = FALSE}
+
+library(tidyverse)
+library(tigris)
+library(sf)
+
+roads <- roads("KY", "Jefferson", class = 'sf')
+tracts <- tracts("KY", "Jefferson", class = 'sf')
+
+water <- 
+  area_water("KY", "Jefferson", class = 'sf') %>%
+  st_union() %>%
+  st_combine()
+
+background <-
+  tracts %>%
+  mutate(dissolve = 1) %>%
+  group_by(dissolve) %>%
+  summarise() %>%
+  st_difference(water)
+
+```
+
+```{r hidden, include = FALSE}
+
+library(tidyverse)
+library(tigris)
+library(sf)
+
+roads <- roads("KY", "Jefferson", class = 'sf')
+tracts <- tracts("KY", "Jefferson", class = 'sf')
+
+water <- 
+  area_water("KY", "Jefferson", class = 'sf') %>%
+  st_union() %>%
+  st_combine()
+
+background <-
+  tracts %>%
+  mutate(dissolve = 1) %>%
+  group_by(dissolve) %>%
+  summarise() %>%
+  st_difference(water)
+
+```
+
+## Shaping data
+
+```{r more-packages}
+
+library(tidyverse)
+library(scales)
+library(magrittr)
+library(classInt)
+library(janitor)
+
+```
+
+The task at hand is one of transforming streets into networks, which requires defining what constitutes an edge and a node, and taking steps to shape the data according to those definitions. An intersection could be a node and each road the link between them, but this would not suit the following analysis. If we want to understand a network, say a social network, we would consider nodes *connectors* and edges *connections*; a hub is a person, its spokes are their relationships. This means that, perhaps against our intuition, *streets* are nodes and *intersections* are their relationships. 
+
+```{r}
+
+difference <- st_difference(roads)
+intersection <- st_intersection(difference)
+
+```
+
+In the above code, we take the difference, which removes duplicate geometries and then the intersection, which creates point shapes at each intersection, among other computations. In the below code, we select only the points and, joining to the existing road shape, we are able to extract these points with information on which lines meet at each point. Every line that touches a point will be grafted on as its identifier. 
+
+```{r}
+
+nodes <-
+  intersection %>%
+  st_geometry_type() %>% 
+  as_tibble() %>% 
+  bind_cols(intersection) %>%
+  filter(value == "POINT") %>% 
+  st_as_sf()
+
+join <- 
+  st_join(nodes, intersection) %>%
+  clean_names()
+
+```
+
+At each intersection in the network, there are *n!* rows, with *n* equal to the number of streets at that intersection. We have both the point for where *street a* intersects *street b* and where *b* intersects *a*. (We also have where *a* intersects *a* but remove that later.) Critically, this means that we have every street in relation to others; the duplicates help. From here, we need to grapple with the street network as an abstraction, removed from space. This requires packages for network analysis, namely **igraph**. This package allows for many basic calculations, like measures of centrality, and also allows for nuances like radii to probe distinctions between local clusters within a global network. 
+
+```{r network-tools}
+
+library(igraph)
+library(tidygraph)
+
+```
+
+Each point has, due to the earlier joining operation, information from both roads that cross to create it. First we take all identifiers (streets) and, essentially, throw them into a space as nodes. Then we find the links by taking the same data and selecting columns for the start and end identifiers---though this graph will not consider direction. Here we also remove all the points where that represent a street related to itself.   
+
+```{r links-nodes}
+
+verts <-
+  join %>%
+  drop_na() %>%
+  gather(variable, value, linearid_x, linearid_y) %>%
+  magrittr::use_series(value) %>%
+  unique() %>%
+  as_tibble() %>%
+  rename(id = value)
+
+links <-
+  join %>%
+  drop_na() %>%
+  filter(linearid_x != linearid_y) %>%
+  select(linearid_x, linearid_y) %>%
+  rename(from = linearid_x,
+         to = linearid_y)
+
+```
+
+These are then cast into a graph. Note that this graph strips any spatial location: each street is only situated in relation to other streets. Oddly enough, some streets have no connections, doubtless an artifact of the data. We also see that there are clusters and the plot is weighted to show this, but where are these clusters? 
+
+```{r graph}
+
+graph <- graph_from_data_frame(links, vertices = verts, directed = FALSE)
+
+plot(graph,
+     vertex.size = 0.1,
+     vertex.label = '', 
+     alpha = 0.5)
+
+```
+
+```{r choices}
+
+choices <-
+  verts %>%
+  mutate(tween = betweenness(graph, v = V(graph), directed = FALSE),
+         close = closeness(graph, v = V(graph)),
+         degri = degree(graph, v = V(graph)))
+
+```
+
+Given the above observation, and that we would like to consider both topology and morphology, we need to join these data back to their respective geometries. In order to answer where these clusters are, we need to project them back into space. We could also label some streets on the graph---a far less compelling finish for a geographer.  
+
+```{r back-sf}
+
+choices_sf <- 
+  roads %>%
+  clean_names %>%
+  rename(id = linearid) %>%
+  inner_join(choices) %>%
+  st_as_sf()
+
+```
+
+## Probing data
+
+In order to make sense of the data, the following sections focus on mapping and plotting it. We use *jenks* clustering for categories of centrality, because, as we saw above and see below, the distribution is skewed. At the bottom of this page, palettes and themes are coded to aid in the task of reproducibility. 
+
+```{r betweenness}
+
+natural_tween <- 
+  choices %>%
+  magrittr::use_series(tween) %>%
+  classIntervals(n = 9, style = 'jenks') %>%
+  magrittr::use_series(brks)
+
+```
+
+Our first pass will use betweenness centrality, sometimes defined as through-movement. This measure will find the roads that span distances greater than normal lengths; to wit, in Philadlephia, roads that cross the river should see higher betweenness than those without bridges. Expressed in probability, this asks, traveling to anywhere from anywhere, which road has the highest likelihood of being a path on that journey? 
+
+```{r first-plot}
+
+lab <- 
+  c(round(rescale(natural_tween, to = c(0, 9)), 2)) %>% 
+  as_tibble() %>% 
+  pull()
+
+```
+
+Note that because betweenness is rather difficult to interpret, we rescale it to a range from 0 to 10. We replicate this for closeness later on. The following blocks of code simply store various plots so that we can create a board of plots later and explore differences across cities.  
+
+```{r guides, include = FALSE}
+
+pal <- 
+  read_csv("https://raw.githubusercontent.com/asrenninger/palettes/master/turbo.txt", col_names = FALSE) %>% 
+  pull(X1)
+
+guide <-
+  guide_legend(direction = "horizontal",
+               keyheight = unit(2, units = "mm"),
+               keywidth = unit(10, units = "mm"),
+               title.position = 'top',
+               label.position = 'bottom',
+               title.hjust = 0.5,
+               label.hjust = 1,
+               nrow = 1,
+               byrow = TRUE)
+
+theme_map <- function () {
+  theme_void() + 
+    theme(plot.background = element_rect(fill = 'black', colour = 'black'),
+          panel.grid.major.x = element_blank(),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          axis.line.x = element_blank(),
+          axis.line.y = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          legend.title = element_text(colour = 'grey50'),
+          legend.text = element_text(colour = 'white'),
+          plot.title = element_text(face = 'bold', colour = 'grey50'),
+          plot.subtitle =  element_text(face = 'plain', colour = 'white', size = 15),
+          panel.grid.major = element_line(size = NA), 
+          panel.grid.minor = element_line(size = NA),
+          legend.position = c(0.2, 0.8),
+          plot.margin = margin(20, 20, 20, 20)
+    )
+  
+}
+
+theme_hor <- function () {
+  theme_minimal() +
+    theme(plot.background = element_rect(fill = 'black', colour = 'black'),
+          panel.grid.major.x = element_blank(),
+          panel.grid.major.y = element_line(size = 0.1, color='grey50'),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          axis.line.x = element_line(size = 0.5, color = 'white'),
+          axis.line.y = element_blank(),
+          axis.ticks.x = element_line(size = 0.5, color = 'white'),
+          axis.ticks.y = element_line(size = 0.1, color = 'grey50'),
+          axis.text.x = element_text(face = 'bold'),
+          axis.text.y = element_text(face = 'bold'),
+          axis.title.x = element_text(colour = 'white'),
+          axis.title.y = element_text(colour = 'white'),
+          plot.title = element_text(face = 'bold', colour = 'grey50'),
+          plot.subtitle =  element_text(face = 'plain', colour = 'white', size = 15),
+          plot.margin = margin(20, 20, 20, 20),
+          legend.position = 'none'
+    )
+}
+
+```
+
+```{r p1}
+
+p_tween <- 
+  ggplot() +
+  geom_sf(data = background,
+          aes(), fill = '#353535', colour = NA, size = 0) +
+  geom_sf(data = choices_sf %>%
+            mutate(group = factor(cut(as.numeric(tween), c(natural_tween)))),
+          aes(colour = group, fill = group)) +
+  scale_fill_manual(values = pal,
+                     labels = c(lab[2:9], 10),
+                     na.translate = FALSE,
+                     name = "betweenness (rescaled)",
+                     guide = guide) +
+  scale_color_manual(values = pal,
+                     labels = c(lab[2:9], 10),
+                     na.translate = FALSE,
+                     name = "betweenness (rescaled)",
+                     guide = guide) +
+  xlim(-85.94412, -85.40490) +
+  ylim(37.99721, 38.37852) +
+  labs(title = "through-movement", subtitle = "BETWEENNESS CENTRALITY") +
+  theme_map()
+
+```
+
+The second pass is closeness centrality, sometimes defined as to-movement, which is a measure of distance: how close is any given node to all others?
+As we saw earlier, downtown will likely show the highest closeness centrality. A multinucleated city, however, would show several areas of high closeness. 
+
+```{r p2, eval = TRUE}
+
+natural_close <- 
+  choices %>%
+  magrittr::use_series(close) %>%
+  classIntervals(n = 9, style = 'jenks') %>%
+  magrittr::use_series(brks)
+
+lab <- 
+  c(round(rescale(natural_close, to = c(0, 9)), 2)) %>%
+  as_tibble() %>% 
+  pull()
+
+p_close <- 
+  ggplot() +
+  geom_sf(data = background,
+          aes(), fill = '#353535', colour = NA, size = 0) +
+  geom_sf(data = choices_sf %>%
+            mutate(group = factor(cut(as.numeric(close), c(natural_close)))),
+          aes(colour = group, fill = group)) +
+  scale_fill_manual(values = pal,
+                    labels = c(lab[2:9], 10),
+                    na.translate = FALSE,
+                    name = "closeness (rescaled)",
+                    guide = guide) +
+  scale_color_manual(values = pal,
+                     labels = c(lab[2:9], 10),
+                     na.translate = FALSE,
+                     name = "closeness (rescaled)",
+                     guide = guide) +
+  xlim(-85.94412, -85.40490) +
+  ylim(37.99721, 38.37852) +
+  labs(title = "to-movement", subtitle = "CLOSENESS CENTRALITY") +
+  theme_map()
+
+```
+
+Our final pass is degree centrality, which is simply a count of a nodes links. Degree centrality in cities suggests the Matthew Effect---the rich get richer. Longer roads will have greater degree centrality. The power law which marks the distribution of intersections affirms this idea. Without any consideration of space, this is intuitive: randomly adding edges will favor nodes that hold a greater share of the network, yet we should also see spatial constraints. 
+
+```{r p3, eval = TRUE}
+
+natural_degri <- 
+  choices %>%
+  magrittr::use_series(degri) %>%
+  classIntervals(n = 9, style = 'jenks') %>%
+  magrittr::use_series(brks)
+
+lab <- 
+  c(round(rescale(natural_degri, to = c(0, 9)), 2)) %>% 
+  as_tibble() %>% 
+  pull()
+
+p_degri <- 
+  ggplot() +
+  geom_sf(data = background,
+          aes(), fill = '#353535', colour = NA, size = 0) +
+  geom_sf(data = choices_sf %>%
+            mutate(group = factor(cut(as.numeric(degri), c(natural_degri)))),
+          aes(colour = group, fill = group)) +
+  scale_fill_manual(values = pal,
+                    labels = c(lab[2:9], 10),
+                    na.translate = FALSE,
+                    name = "degree (rescaled)",
+                    guide = guide) +
+  scale_color_manual(values = pal,
+                     labels = c(lab[2:9], 10),
+                     na.translate = FALSE,
+                     name = "degree (rescaled)",
+                     guide = guide) +
+  xlim(-85.94412, -85.40490) +
+  ylim(37.99721, 38.37852) +
+  labs(title = "connections", subtitle = "DEGREE CENTRALITY") +
+  theme_map()
+
+```
+
+One feature of heterogenous networks like this one is that they are self-organized. Fittingly, the homogenous section of this network has a series of streets with similar degrees; the heterogenous sections that came later, with desires lines that cut to the chase---or the river, from the interior---before stopping at the extant grid, exhibit patterns like an self-organized network, perhaps Boston or London. Networks like the latter, rather than the former, show the properties of **small world**, the condition exemplified by Stanley Milgrim's six degrees of separation. In small worlds, flows need only pass through a few nodes to reach any other node. With some streets spanning the city, it takes only a few turns to reach any neighborhood.
+
+```{r p4, eval = TRUE}
+
+p_density <-
+  intersection %>%
+  clean_names() %>%
+  group_by(linearid) %>%
+  summarise(n = n()) %>%
+  ggplot() +
+  geom_density(aes(n, fill = n), alpha = 0.75, colour = '#ffffff', fill = pal[3]) +
+  labs(title = "the power laws of street interaction", 
+       subtitle = "INTERSECTIONS", 
+       x = "distribution", "number of intersections") +
+  theme_hor()
+
+```
+
+Before we get into the arrangement of our final board, we also need to compute the distribution of intersections and plot it as a histogram. This will allow us to compare skews across cities; some spatial arrangements may allow for preferential attachment and thus may support expansion, as new, peripheral roads can join old, central ones with ease.   
+
+```{r grid, eval = TRUE}
+
+library(gridExtra)
+library(grid)
+
+```
+
+After we load the final set of packages, we are ready to plot and compare between cities. Each board is meant to be identical to aid in this comparison. 
+
+```{r board, eval = FALSE}
+
+blank <- grid.rect(gp = gpar(col = 'black', fill = 'black'))
+
+plots <- list(p_tween, p_close, p_degri, p_density)
+
+lay <- rbind(c(1, 1, 1, 2, 2, 2),
+             c(1, 1, 1, 2, 2, 2),
+             c(1, 1, 1, 2, 2, 2),
+             c(3, 3, 3, 4, 4, NA),
+             c(3, 3, 3, 4, 4, NA),
+             c(3, 3, 3, NA, NA, NA)) 
+
+agg <- grobTree(rectGrob(gp = gpar(fill = 'black', lwd = 0)), 
+                grid.arrange(grobs = plots, layout_matrix = lay))
+
+
+ggsave(agg, filename = "aggregate.png", height = 20, width = 20, dpi = 300)
+
+```
+
+![](https://github.com/asrenninger/jams/raw/master/viz/aggregate.png)
+
