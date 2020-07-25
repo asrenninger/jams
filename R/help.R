@@ -87,13 +87,13 @@ theme_map <- function () {
           axis.ticks.y = element_blank(),
           axis.text.x = element_blank(),
           axis.text.y = element_blank(),
-          legend.title = element_text(colour = 'grey50', angle = 270),
-          legend.text = element_text(colour = 'white', angle = 270),
+          legend.title = element_text(colour = 'grey50'),
+          legend.text = element_text(colour = 'white'),
           plot.title = element_text(face = 'bold', colour = 'grey50'),
           plot.subtitle =  element_text(face = 'plain', colour = 'white', size = 15),
           panel.grid.major = element_line(size = NA), 
           panel.grid.minor = element_line(size = NA),
-          legend.position = c(0.8, 0.25),
+          legend.position = c(0.2, 0.8),
           plot.margin = margin(20, 20, 20, 20)
     )
   
@@ -209,7 +209,7 @@ discreter <- function(values, breaks) {
 
 labeller <- function(values, max) {
   quantise <- quantile(values,
-                       c(.1,.2,.4,.6,.8),
+                       c(.1,.2,.3,.4,.5,.6,.7,.8,.9),
                        na.rm = TRUE)
   
   characterise <- as.character(quantise)
