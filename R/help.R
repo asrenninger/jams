@@ -223,6 +223,6 @@ labeller <- function(values, max) {
 ## Wrappers
 
 # magrittr
-use_series <- function(label) { return(magrittr::use_series(label)) }
+use <- function(label) { return(magrittr::use_series(label)) }
 
 

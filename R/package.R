@@ -17,6 +17,7 @@ library(sfnetworks)
 library(tmap)
 library(tmaptools)
 library(tigris)
+library(rmapshaper)
 
 ## Data
 
