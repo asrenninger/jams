@@ -179,8 +179,6 @@ located <-
             speed = mean(speed),
             delay = mean(delay))
 
-
-
 ##
 
 test <- 
