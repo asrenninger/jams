@@ -171,7 +171,7 @@ vroom_write(st_drop_geometry(tagged), "tagged_post.csv")
 
 ##
 
-located <- 
+spatio <- 
   tagged %>%
   st_drop_geometry() %>%
   group_by(osm_id) %>%
@@ -221,5 +221,15 @@ tmap_save(map, "raw.png", height = 10, width = 14, dpi = 300, units = "in")
 
 ##
 
-  
+temporal <- 
+  tagged %>%
+  st_drop_geometry() %>%
+  mutate(date = with_tz(pub_utc_date, "EST")) %>%
+  mutate(date = floor_date(date, 'hour')) %>%
+  group_by(osm_id, date) %>%
+  summarise(n = n(),
+            speed = mean(speed),
+            delay = mean(delay)) %>%
+  ungroup()
 
+glimpse(temporal)
