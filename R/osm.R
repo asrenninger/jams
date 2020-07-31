@@ -115,7 +115,7 @@ jams_ramps <-
 
 misses <- 
   tagged %>%
-  filter(!jam_id %in% jams_ramps$jam_id) %>%
+  filter(!id %in% jams_ramps$id) %>%
   select(-osm_id, -highway, -oneway, -lanes, -maxspeed)
 
 tagged <- st_join(misses, major)
@@ -126,7 +126,7 @@ jams_major <-
 
 misses <- 
   tagged %>%
-  filter(!jam_id %in% jams_major$jam_id) %>%
+  filter(!id %in% jams_major$id) %>%
   select(-osm_id, -highway, -oneway, -lanes, -maxspeed)
 
 tagged <- st_join(misses, route)
@@ -137,7 +137,7 @@ jams_route <-
 
 misses <- 
   tagged %>%
-  filter(!jam_id %in% jams_route$jam_id) %>%
+  filter(!id %in% jams_route$id) %>%
   select(-osm_id, -highway, -oneway, -lanes, -maxspeed)
 
 tagged <- st_join(misses, minor)
@@ -148,19 +148,26 @@ jams_minor <-
 
 misses <- 
   tagged %>%
-  filter(!jam_id %in% jams_minor$jam_id) %>%
+  filter(!id %in% jams_minor$id) %>%
   select(-osm_id, -highway, -oneway, -lanes, -maxspeed)
 
 tagged <- rbind(jams_major, jams_minor, jams_ramps, jams_route)
 
-sum(tagged$jam_id_1 %in% points$jam_id_1)
-
-length(unique(points$jam_id))
-length(unique(points$latitude))
+sum(!tagged$id %in% points$id)
 
 dim(misses)
 dim(tagged)
 dim(points)
+
+vroom_write(st_drop_geometry(tagged), "tagged_pre.csv")
+
+tagged <- 
+  tagged %>%
+  group_by(id) %>%
+  slice(1) %>%
+  ungroup()
+
+vroom_write(st_drop_geometry(tagged), "tagged_post.csv")
 
 ##
 
@@ -168,11 +175,13 @@ located <-
   tagged %>%
   st_drop_geometry() %>%
   group_by(osm_id) %>%
-  summarise(n = n())
+  summarise(n = n(),
+            speed = mean(speed),
+            delay = mean(delay))
+
+
 
 ##
-
-tmap_mode("view")
 
 test <- 
   intersection %>%
@@ -211,3 +220,8 @@ map <-
             main.title = "Traffic Congestion According to Waze") 
 
 tmap_save(map, "raw.png", height = 10, width = 14, dpi = 300, units = "in")
+
+##
+
+  
+
