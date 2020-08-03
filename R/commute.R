@@ -235,8 +235,8 @@ routes <- tbl_graph()
 
 for (i in 1:nrow(chunk)) {
   
-  from_node <- chunk[50, 2]
-  to_node <- chunk[50, 3]
+  from_node <- chunk[i, 2]
+  to_node <- chunk[i, 3]
   
   path <- 
     shortest_paths(graph = network,
