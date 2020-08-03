@@ -225,4 +225,52 @@ labeller <- function(values, max) {
 # magrittr
 use <- function(label) { return(magrittr::use_series(label)) }
 
+## Networks
+
+# tidygraph
+
+sf_to_tidygraph = function(x, directed = TRUE) {
+  
+  edges <- 
+    x %>%
+    mutate(EDGEID = c(1:n()))
+  
+  nodes <- 
+    edges %>%
+    st_coordinates() %>%
+    as_tibble() %>%
+    rename(EDGEID = L1) %>%
+    group_by(EDGEID) %>%
+    slice(c(1, n())) %>%
+    ungroup() %>%
+    mutate(start_end = rep(c('start', 'end'), times = n()/2)) %>%
+    mutate(xy = paste(.$X, .$Y)) %>% 
+    mutate(NODEID = group_indices(., factor(xy, levels = unique(xy)))) %>%
+    select(-xy)
+  
+  source_nodes <- 
+    nodes %>%
+    filter(start_end == 'start') %>%
+    pull(NODEID)
+  
+  target_nodes <- 
+    nodes %>%
+    filter(start_end == 'end') %>%
+    pull(NODEID)
+  
+  edges = 
+    edges %>%
+    mutate(from = source_nodes, to = target_nodes)
+  
+  nodes <- 
+    nodes %>%
+    distinct(NODEID, .keep_all = TRUE) %>%
+    select(-c(EDGEID, start_end)) %>%
+    st_as_sf(coords = c('X', 'Y')) %>%
+    st_set_crs(st_crs(edges))
+  
+  tbl_graph(nodes = nodes, edges = as_tibble(edges), directed = directed)
+  
+}
+
 

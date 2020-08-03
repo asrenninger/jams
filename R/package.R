@@ -15,6 +15,8 @@ library(glue)
 
 library(sf)
 library(sfnetworks)
+library(tidygraph)
+library(igraph)
 library(tmap)
 library(tmaptools)
 library(tigris)

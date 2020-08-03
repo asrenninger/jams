@@ -142,59 +142,7 @@ for (i in 1:nrow(od_data)) {
 
 ##
 
-library(tidygraph)
-library(igraph)
-
-
-st_read("data/graph/edges.shp")
-
-library(fs)
-
 roads <- read_sf("data/network/edges.shp")
-
-sf_to_tidygraph = function(x, directed = TRUE) {
-  
-  edges <- 
-    x %>%
-    mutate(EDGEID = c(1:n()))
-  
-  nodes <- 
-    edges %>%
-    st_coordinates() %>%
-    as_tibble() %>%
-    rename(EDGEID = L1) %>%
-    group_by(EDGEID) %>%
-    slice(c(1, n())) %>%
-    ungroup() %>%
-    mutate(start_end = rep(c('start', 'end'), times = n()/2)) %>%
-    mutate(xy = paste(.$X, .$Y)) %>% 
-    mutate(NODEID = group_indices(., factor(xy, levels = unique(xy)))) %>%
-    select(-xy)
-  
-  source_nodes <- 
-    nodes %>%
-    filter(start_end == 'start') %>%
-    pull(NODEID)
-  
-  target_nodes <- 
-    nodes %>%
-    filter(start_end == 'end') %>%
-    pull(NODEID)
-  
-  edges = 
-    edges %>%
-    mutate(from = source_nodes, to = target_nodes)
-  
-  nodes <- 
-    nodes %>%
-    distinct(NODEID, .keep_all = TRUE) %>%
-    select(-c(EDGEID, start_end)) %>%
-    st_as_sf(coords = c('X', 'Y')) %>%
-    st_set_crs(st_crs(edges))
-  
-  tbl_graph(nodes = nodes, edges = as_tibble(edges), directed = directed)
-  
-}
 
 ##
 
@@ -216,8 +164,8 @@ network <-
 ##
 
 ggplot() +
-  geom_sf(data = network %>% activate(edges) %>% as_tibble() %>% st_as_sf(), size = 0.1) + 
-  geom_sf(data = network %>% activate(nodes) %>% as_tibble() %>% st_as_sf(), size = 0.1) +
+  geom_sf(data = network %>% activate(edges) %>% as_tibble() %>% st_as_sf() %>% st_transform(st_crs(louisville)) %>% st_intersection(louisville), size = 0.1) + 
+  geom_sf(data = network %>% activate(nodes) %>% as_tibble() %>% st_as_sf() %>% st_transform(st_crs(louisville)) %>% st_intersection(louisville), size = 0.1) +
   theme_void()
 
 ##
@@ -258,7 +206,7 @@ waypoints <-
   gather(location, GEOID, h_bg:w_bg) %>%
   left_join(projected) %>%
   mutate(jobs = S000) %>%
-  select(id, location, GEOID, X, Y, jobs)
+  select(GEOID, id, location, X, Y, jobs)
 
 nn <- nn2(intersections, select(waypoints, X, Y), k = 1, searchtype = "radius", radius = 10000)
 
@@ -287,8 +235,8 @@ routes <- tbl_graph()
 
 for (i in 1:nrow(chunk)) {
   
-  from_node <- chunk[i, 2]
-  to_node <- chunk[i, 3]
+  from_node <- chunk[50, 2]
+  to_node <- chunk[50, 3]
   
   path <- 
     shortest_paths(graph = network,
@@ -309,8 +257,16 @@ for (i in 1:nrow(chunk)) {
              activate(edges) %>%
              as_tibble() %>%
              summarise(length = sum(length)) %>%
-             pull(length))
+             pull(length),
+           id = rep(chunk[i, 1], n()))
   
   routes <- bind_graphs(routes, path_graph)
   
 }
+
+path_graph %>% 
+  activate(edges) %>% 
+  as_tibble() %>% 
+  st_as_sf() %>% 
+  select(length) %>% 
+  plot()
