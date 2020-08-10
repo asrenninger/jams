@@ -1,5 +1,5 @@
-source("R/help.r")
 source("R/package.r")
+source("R/help.r")
 
 ##
 
@@ -8,12 +8,12 @@ library(lehdr)
 ##
 
 main <- grab_lodes(state = "KY", year = 2015, 
-                    segment = "S000", job_type = "JT01", 
-                    lodes_type = "od", agg_geo = "bg", state_part = "main")
+                   segment = "S000", job_type = "JT01", 
+                   lodes_type = "od", agg_geo = "bg", state_part = "main")
 
 auxi <- grab_lodes(state = "KY", year = 2015, 
-                    segment = "S000", job_type = "JT01", 
-                    lodes_type = "od", agg_geo = "bg", state_part = "aux")
+                   segment = "S000", job_type = "JT01", 
+                   lodes_type = "od", agg_geo = "bg", state_part = "aux")
 
 comb <- 
   rbind(main, auxi) %>% 
@@ -200,4 +200,36 @@ dots %>%
   select(id, everything()) %>%
   write_csv("dots.csv")
 
-##s
+##
+
+paths <- read_sf("data/imputed_homes_nometa.shp")
+
+##
+
+edges_data <- read_sf("data/louisville/edges.shp")
+nodes_data <- read_sf("data/louisville/nodes.shp")
+
+##
+
+edges <- select(edges_data, from, to)
+nodes <- select(nodes_data, osmid)
+
+nodes <- select(nodes_data, osmid)
+
+glimpse(edges)
+glimpse(nodes)
+
+##
+
+graph <- graph_from_data_frame(edges, nodes, directed = FALSE)
+
+plot(graph,
+     vertex.size = 0.5,
+     vertex.label = '', 
+     alpha = 0.5)
+
+graph <- as_tbl_graph(graph)
+
+
+
+     
