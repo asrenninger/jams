@@ -11,35 +11,6 @@ jams <- vroom("data/jams.csv") %>% glimpse()
 
 ## 
 
-roads <- 
-  getbb("Louisville, KY") %>%
-  opq() %>%
-  add_osm_feature(key = "highway") %>%
-  osmdata_sf() %>%
-  magrittr::use_series("osm_lines") %>%
-  select(osm_id, highway, oneway, lanes, maxspeed) %>%
-  filter(!str_detect(highway, "footway|track|steps|raceway|cycleway|pedestrian")) %>%
-  st_as_sf()
-
-bounds <-
-  getbb("Kentucky, USA") %>%
-  opq() %>%
-  add_osm_feature(key = "admin_level", value = "6") %>%
-  osmdata_sf() %>%
-  magrittr::use_series("osm_polygons")
-  
-##
-
-tmap_mode("view")
-
-tm_shape(roads) +
-  tm_lines()
-
-tm_shape(bounds) +
-  tm_polygons()
-
-## 
-
 options(tigris_use_cache=TRUE)
 
 ##

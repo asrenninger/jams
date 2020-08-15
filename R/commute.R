@@ -202,33 +202,32 @@ dots %>%
 
 ##
 
-paths <- read_sf("data/imputed_homes_nometa.shp")
+commutes <- 
+  read_sf("data/imputed_homes_nometa.shp", crs = 4326) %>%
+  st_transform(2205)
 
 ##
 
-edges_data <- read_sf("data/louisville/edges.shp")
-nodes_data <- read_sf("data/louisville/nodes.shp")
+overline <- stplanr::overline2(st_cast(commutes, "LINESTRING"), attr = "dissolve")
 
 ##
 
-edges <- select(edges_data, from, to)
-nodes <- select(nodes_data, osmid)
+map <- 
+  tm_shape(overline %>%
+             rename(use = dissolve)) +
+  tm_lines(col = '#000000', 
+           lwd = "use",
+           style = "fisher",
+           palette = pal,
+           midpoint = NA,
+           legend.title = "use") +
+  tm_layout(main.title = "commutes", 
+            scale = 10, legend.width = 0.25, legend.height = 0.25, legend.text.size = 8,
+            frame.lwd = 0) 
 
-nodes <- select(nodes_data, osmid)
+tmap_save(map, "commutes.png", height = 8, width = 10, dpi = 300, units = "in")
 
-glimpse(edges)
-glimpse(nodes)
 
-##
-
-graph <- graph_from_data_frame(edges, nodes, directed = FALSE)
-
-plot(graph,
-     vertex.size = 0.5,
-     vertex.label = '', 
-     alpha = 0.5)
-
-graph <- as_tbl_graph(graph)
 
 
 

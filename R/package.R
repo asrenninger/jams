@@ -10,6 +10,8 @@ library(vroom)
 library(data.table)
 library(dtplyr)
 library(glue)
+library(lubridate)
+library(scales)
 
 ## Spatial
 
@@ -21,6 +23,7 @@ library(tmap)
 library(tmaptools)
 library(tigris)
 library(rmapshaper)
+library(stplanr)
 
 ## Data
 
