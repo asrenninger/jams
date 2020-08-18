@@ -291,8 +291,8 @@ covariates <-
             length = length, 
             bearing = bearing,
             highway = highway,
-            ease = ease,
-            oneway = factor(oneway)) %>%
+            oneway = factor(oneway),
+            ease = ease) %>%
   glimpse()
 
 ##
@@ -341,21 +341,79 @@ weekly <-
   st_drop_geometry() %>%
   mutate(date = with_tz(pub_utc_date, "EST")) %>%
   mutate(date = floor_date(date, 'hour')) %>%
-  group_by(osmid, date) %>%
+  mutate(freeway = factor(if_else(road_type == 3,1,0))) %>%
+  group_by(osmid, freeway, date) %>%
   summarise(n = n(),
             speed = mean(speed),
             delay = sum(delay)) %>%
   ungroup() %>%
   mutate(hour = hour(date),
          day = wday(date, label = TRUE)) %>%
-  #filter(!str_detect(day, "Sat|Sun")) %>% 
-  group_by(osmid, day, hour) %>%
+  filter(!str_detect(day, "Sat|Sun")) %>% 
+  group_by(osmid, freeway, day, hour) %>%
   summarise(n = mean(n),
             speed = mean(speed),
             delay = mean(delay)) %>%
+  mutate(peak = peaker(day, hour)) %>%
   ungroup()
 
 glimpse(weekly)
+
+##
+
+series <- 
+  weekly %>%
+  left_join(covariates) %>%
+  left_join(cleaning) %>%
+  select(osmid, n, speed, delay, highway, oneway, freeway, day, hour, peak, everything()) %>%
+  mutate(eccen = scale(eccen)[, 1],
+         degri = scale(degri)[, 1], 
+         grade = scale(grade)[, 1],
+         bearing = scale(bearing)[, 1],
+         commutes = scale(commutes)[, 1],
+         log_n = log(n))
+
+##
+
+library(lme4)
+library(broom)
+
+##
+
+lme <-  lmer(log_n ~ day:hour + day:peak + commutes +
+                freeway + oneway + highway + eccen + degri + grade + bearing +
+                (1 + hour||osmid),
+              data = series)
+
+fit <-
+  augment(lme) %>% 
+  mutate(mae = abs(.fitted - log_n),
+         mape = abs(.fitted - log_n) / log_n)
+
+mean(fit$mae)
+mean(fit$mape)
+
+##
+
+ggplot(fit, aes(x = log_n, y = .fitted, colour = .resid)) +
+  geom_hex(bins = 100) +
+  geom_abline(linetype = 2, colour = '#7d7d7d', size = 1) +
+  scale_fill_gradientn(colours = pal, 
+                       guide = 'none') +
+  annotate(geom = "segment", x = (log(1) + log(2) / 2), y = 6, xend = log(1), yend = 5, 
+           arrow = arrow(length = unit(2, "mm"))) +
+  annotate(geom = "segment", x = (log(1) + log(2) / 2), y = 6, xend = log(2), yend = 5, 
+           arrow = arrow(length = unit(2, "mm"))) + 
+  annotate(geom = "text", x = 2, y = 6.2, 
+           label = 'problems at segments with 1 or 2 jams', fontface = 'bold', 
+           colour = '#000000') +
+  xlab("log jams") +
+  ylab("fitted values") +
+  scale_y_continuous(breaks = c(-1, 0 , 1, 2, 3, 4, 5, 6)) +
+  scale_x_continuous(breaks = c(-1, 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)) +
+  coord_fixed() +
+  theme_ver() + 
+  ggsave("errors.png", height = 6, width = 8, dpi = 300)
 
 ##
 
@@ -365,9 +423,36 @@ series <-
   left_join(weather) %>%
   left_join(covariates)
 
+##
 
+library(photobiology)
 
+##
 
+links <- 
+  streets %>%
+  st_drop_geometry() %>%
+  transmute(from = u,
+            to = v)
 
+verts <-
+  bind_rows(transmute(links, id = from),
+            transmute(links, id = to)) %>%
+  distinct()
 
+graph <- graph_from_data_frame(links, vertices = verts, directed = FALSE)
 
+spect <- spectrum(graph)
+spectibl <- 
+  tibble(value = spect[[3]][, 1]) %>%
+  mutate(spectral = rescale(value, to = c(400, 700))) %>%
+  mutate(hex = w_length2rgb(spectral)) %>%
+  arrange(spectral)
+
+options(scipen = 999)
+
+ggplot(data = spectibl) +
+  geom_bar(aes(x = spectral, y = 100, fill = hex), stat = 'identity') +
+  scale_fill_manual(values = unique(spectibl$hex), guide = 'none') +
+  theme_void() + 
+  ggsave("spectrum.png", height = 6, width = 8, dpi = 300)
