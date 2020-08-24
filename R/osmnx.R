@@ -322,13 +322,32 @@ regression <-
   left_join(cleaning) %>%
   select(-geometry)
 
+shape <- select(covariates, osmid, geometry)
+
 ##
 
-lm(log(n) ~ .,
-   data = regression %>%
-     mutate(commutes = log(commutes)) %>%
-     select(-osmid, -delay, -speed)) %>%
-  summary()
+lin <- lm(log(n) ~ degri + eccen + length + bearing + grade + ease + highway + oneway + commutes + I(commutes^2), 
+          data = regression %>%
+            filter(n > 10) %>%
+            mutate(commutes = log(commutes)) %>%
+            select(-osmid, -delay, -speed))
+
+summary(lin)
+
+regression <- 
+  regression %>%
+  filter(n > 10) %>%
+  drop_na() %>%
+  mutate(residuals = lin$residuals) %>%
+  left_join(shape) %>%
+  st_as_sf()
+  
+ggplot(data = regression, aes(log(n), residuals)) +
+  geom_hex(bins = 100, show.legend = FALSE) +
+  scale_fill_gradientn(colours = pal, 
+                       guide = 'none') + 
+  theme_ver() +
+  ggsave('rezzies.png', height = 6, width = 8, dpi = 300)
 
 ##
 
@@ -443,6 +462,7 @@ verts <-
 graph <- graph_from_data_frame(links, vertices = verts, directed = FALSE)
 
 spect <- spectrum(graph)
+
 spectibl <- 
   tibble(value = spect[[3]][, 1]) %>%
   mutate(spectral = rescale(value, to = c(400, 700))) %>%
