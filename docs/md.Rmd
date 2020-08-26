@@ -56,4 +56,14 @@ We take the log of our dependent variable to combat its skew. We then line up th
 
 # Models
 
-The twin challenges here are *spatial* and *spatio-temporal* modelling: for transportation planning, a model to understand flows beyond daily fluxuations is better, while other use cases might demand predictions around adjustments to the network. The hypothesis that we are testing here is that network centrality---or variious centralities---matter in the prediction of traffic congestion. 
+The twin challenges here are *spatial* and *spatio-temporal* modelling: for transportation planning, a model to understand flows beyond daily fluxuations is better, while other use cases might demand predictions around adjustments to the network. The hypothesis that we are testing here is that network centrality---or variious centralities---matter in the prediction of traffic congestion. It turns out that using commutes and a few other road characteristics explains about 48% of the variation in jams across the city during an average week. This is a simple linear model and it is systematically biased, showing stark patterns in its residuals. 
+
+#### Predicted congestion (space)
+
+![](https://github.com/asrenninger/jams/raw/master/viz/rezzies.png)
+
+Fitting a linear mixed effects curve, we can predict on each street segment at each our of the day. It too shows bias at certain values, notably at low values.  
+
+#### Predicted congestion (space + time)
+
+![](https://github.com/asrenninger/jams/raw/master/viz/errors.png)

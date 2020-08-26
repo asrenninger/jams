@@ -334,6 +334,8 @@ lin <- lm(log(n) ~ degri + eccen + length + bearing + grade + ease + highway + o
 
 summary(lin)
 
+lin %>% broom::tidy() %>% mutate(`p-value` = round(p.value, 8)) %>% select(-p.value) %>% flextable::flextable()
+
 regression <- 
   regression %>%
   filter(n > 10) %>%
@@ -426,7 +428,7 @@ ggplot(fit, aes(x = log_n, y = .fitted, colour = .resid)) +
   annotate(geom = "text", x = 2, y = 6.2, 
            label = 'problems at segments with 1 or 2 jams', fontface = 'bold', 
            colour = '#000000') +
-  xlab("log jams") +
+  xlab("log(jams)") +
   ylab("fitted values") +
   scale_y_continuous(breaks = c(-1, 0 , 1, 2, 3, 4, 5, 6)) +
   scale_x_continuous(breaks = c(-1, 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)) +
