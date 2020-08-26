@@ -1,6 +1,6 @@
 ---
 title: "PREDICTING TRAFFIC CONGESTION"
-subtitle: "(wip)"
+subtitle: "summary of a Penn Planning practicum"
 author: "andrew renninger"
 date: "9 May 2019"
 output: 
@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
 
 # Foundations 
 
-With a dataset of 5 million unique incidents of traffic slowing or stopping from the city of Louisville, We want to determine whether or not the structure of the street network corresponds to troubles during the typical morning commute. Mapping every kink in vehicle flows during the month of June, we can see that certain hot spots do concentrate around major roads—unsurprisingly. Yet this does not tell us about the structure underpinning this phenomenon. Before producing a predictive model, in the interest of extracting valuable features from the urban fabric, we want to measure the relationships between streets and test how these measures associate with traffic congestion.   
+This analysis came out of a colloration between Penn Planning and the City of Louisville as part of a practicum class. With a dataset of 5 million unique incidents of traffic slowing or stopping from the city of Louisville, we attempt to determine whether or not the structure of the street network corresponds to troubles during the typical morning commute. Mapping every kink in vehicle flows during the month of June, we can see that certain hot spots do concentrate around major roads—unsurprisingly. Yet this does not tell us about the structure underpinning this phenomenon. Before producing a predictive model, in the interest of extracting valuable features from the urban fabric, we want to measure the relationships between streets and test how these measures associate with traffic congestion.   
 
 #### Jams
 ![](https://github.com/asrenninger/jams/raw/master/viz/jams.gif)
@@ -62,7 +62,7 @@ The twin challenges here are *spatial* and *spatio-temporal* modelling: for tran
 
 ![](https://github.com/asrenninger/jams/raw/master/viz/rezzies.png)
 
-Fitting a linear mixed effects curve, we can predict on each street segment at each our of the day. It too shows bias at certain values, notably at low values.  
+Fitting a linear mixed effects curve, we can predict on each street segment at each our of the day. It too shows bias at certain values, notably at low values. This model, though, predicts better on a difficult task because it accounts for random effects, leveraging the history of each segment to predict its future.   
 
 #### Predicted congestion (space + time)
 
