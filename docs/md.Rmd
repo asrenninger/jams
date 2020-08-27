@@ -1,6 +1,6 @@
 ---
 title: "PREDICTING TRAFFIC CONGESTION"
-subtitle: "summary of a Penn Planning practicum"
+subtitle: "(summary of a Penn Planning practicum)"
 author: "andrew renninger"
 date: "9 May 2019"
 output: 
@@ -72,5 +72,7 @@ Finally, we attempt to predict using a time series model that simply fits to dai
 
 ![](https://github.com/asrenninger/jams/raw/master/viz/prophet.png)
 
-From here we can train a unique model on each street segment; with limited data, this will have trouble finding trends but as the dataset expands we should expect better results. 
+From here we can train a unique model on each street segment; with limited data, this will have trouble finding trends but as the dataset expands we should expect better results. There are over 450 segments that had at least 100 jams during our study period but we focus on one that had almost 500. This illuminates a fundamental problem with congestion prediction far in advance. With lagging data, there is too much noise to fit a model like this; only if we had a stream of data fed into the modelin real time could we predict the immediate future, using spatial and temporal lags to estimate. 
+
+![](https://github.com/asrenninger/jams/raw/master/viz/segment.png)
 
