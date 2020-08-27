@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
 
 # Foundations 
 
-This analysis came out of a colloration between the School of Design at Penn and the City of Louisville as part of a practicum class. With a dataset of 5 million unique incidents of traffic slowing or stopping from the city of Louisville, we attempt to determine whether or not the structure of the street network corresponds to troubles during the typical morning commute. Mapping every kink in vehicle flows during the month of June, we can see that certain hot spots do concentrate around major roads—unsurprisingly. Yet this does not tell us about the structure underpinning this phenomenon. Before producing a predictive model, in the interest of extracting valuable features from the urban fabric, we want to measure the relationships between streets and test how these measures associate with traffic congestion.   
+This analysis came out of a colloration between the School of Design at Penn and the City of Louisville as part of a practicum class. With a dataset of 5 million unique incidents of traffic slowing or stopping from the city, we attempt to determine whether or not the structure of the street network corresponds to troubles during the typical morning commute. Mapping every kink in vehicle flows during the month of June, we can see that certain hot spots do concentrate around major roads—unsurprisingly. Yet this does not tell us about the structure underpinning this phenomenon. Before producing a predictive model, in the interest of extracting valuable features from the urban fabric, we want to measure the relationships between streets and test how these measures associate with traffic congestion.   
 
 #### Jams
 ![](https://github.com/asrenninger/jams/raw/master/viz/jams.gif)
@@ -67,4 +67,10 @@ Fitting a linear mixed effects curve, we can predict on each street segment at e
 #### Predicted congestion (space + time)
 
 ![](https://github.com/asrenninger/jams/raw/master/viz/errors.png)
+
+Finally, we attempt to predict using a time series model that simply fits to daily ebs and flows without any information on spatial structure. Using the `prophet` package, we train a model and then test it on partitioned data to see how it performs, beginning with the entire network rather than individual segments. 
+
+![](https://github.com/asrenninger/jams/raw/master/viz/prophet.png)
+
+From here we can train a unique model on each street segment; with limited data, this will have trouble finding trends but as the dataset expands we should expect better results. 
 
