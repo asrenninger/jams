@@ -29,8 +29,13 @@ library(stplanr)
 
 library(osmdata)
 
-##
+## Searching
 
 library(RANN)
 library(FNN)
-library(dbscan)
+
+## Modelling
+
+library(lme4)
+library(prophet)
+library(broom)
