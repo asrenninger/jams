@@ -492,24 +492,18 @@ temporal <-
   mutate(date = floor_date(date, 'hour')) %>%
   group_by(date) %>%
   summarise(y = n()) %>%
+  ungroup() %>%
   mutate(y = log(y)) %>%
-  rename(ds = date) %>%
-  ungroup()
+  rename(ds = date)
 
 train <- filter(temporal, ds < as_date("2018-06-22"))
-test <- filter(temporal, ds > as_date("2018-06-22"))
+test <- filter(temporal, ds > as_date("2018-06-21"))
 
 ##
 
 prophecy <- prophet(train)
-
-future <- make_future_dataframe(prophecy, periods = nrow(test), freq = 3600)
-tail(future)
-
+future <- make_future_dataframe(prophecy, periods = nrow(test) - 24, freq = 3600)
 forecast <- predict(prophecy, future)
-tail(forecast[c('ds', 'yhat', 'yhat_lower', 'yhat_upper')])
-
-plot(prophecy, forecast)
 
 ##
 
@@ -524,10 +518,62 @@ ggplot() +
   scale_colour_manual(values = c(pal[1], pal[9]),
                       guide = 'none') +
   scale_y_continuous(breaks = c(3, 6, 9, 12)) +
+  scale_x_datetime(date_breaks = "5 day", labels = date_format("%b %d")) +
   annotate(geom = 'text', x = median(train$ds), y = 1, label = "train", colour = pal[9], fontface = 'bold') +
   annotate(geom = 'text', x = median(test$ds), y = 1, label = "test", colour = pal[1], fontface = 'bold') +
-  annotate(geom = 'text', x = min(train$ds), y = 12.25, label = "log(jams)", fontface = 'bold') +
+  annotate(geom = 'text', x = min(train$ds) + (24*60*60*1), y = 12.25, label = "log(jams)", fontface = 'bold') +
   ylab("") +
+  xlab("") +
   theme_hor() +
   ggsave("prophet.png", height = 6, width = 8, dpi = 300)
 
+##
+
+spatiotemporal <- 
+  tagged %>%
+  st_drop_geometry() %>%
+  mutate(date = with_tz(pub_utc_date, "EST")) %>%
+  mutate(date = floor_date(date, 'hour')) %>%
+  group_by(osmid, date) %>%
+  summarise(y = n()) %>%
+  group_by(osmid) %>%
+  add_tally() %>%
+  ungroup() %>%
+  filter(n == max(n)) %>%
+  mutate(y = log(y)) %>%
+  rename(ds = date)
+
+seq.POSIXt(from = min(temporal$ds), to = max(temporal$ds), by = "hour")
+
+##
+
+train <- filter(spatiotemporal, ds < as_date("2018-06-22"))
+test <- filter(spatiotemporal, ds > as_date("2018-06-21"))
+
+##
+
+prophecy <- prophet(train)
+future <- make_future_dataframe(prophecy, periods = nrow(test) + (2 * 24), freq = 3600)
+forecast <- predict(prophecy, future)
+
+##
+
+ggplot() +
+  geom_line(data = forecast, 
+            aes(x = ds, y = yhat)) +
+  geom_point(data = bind_rows(train %>%
+                                mutate(condition = "train"),
+                              test %>%
+                                mutate(condition = "test")),
+             aes(x = ds, y = y, colour = condition)) +
+  scale_colour_manual(values = c(pal[1], pal[9]),
+                      guide = 'none') +
+  scale_y_continuous(breaks = c(2, 4, 6)) +
+  scale_x_datetime(date_breaks = "5 day", labels = date_format("%b %d")) +
+  annotate(geom = 'text', x = median(train$ds), y = 0.33, label = "train", colour = pal[9], fontface = 'bold') +
+  annotate(geom = 'text', x = median(test$ds), y = 0.33, label = "test", colour = pal[1], fontface = 'bold') +
+  annotate(geom = 'text', x = min(train$ds) + (24*60*60*1), y = 6.25, label = "log(jams)", fontface = 'bold') +
+  ylab("") +
+  xlab("") +
+  theme_hor() +
+  ggsave("segment.png", height = 6, width = 8, dpi = 300)
